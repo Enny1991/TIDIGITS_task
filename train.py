@@ -183,92 +183,6 @@ def loadData(batchSize):
     
     return trainData, tstData
 
-
-def loadData2(batchSize):
-    length = 249
-    totClass = 10
-
-    trainData = loadmat('./data/tidigits_mfccs_train.mat')
-    # trainData = loadmat('./data/d.mat')
-    trainSamples = trainData['tidigits_mfccs_train'][0][0][5][0]
-    trainLabels = trainData['tidigits_mfccs_train'][0][0][8][0]
-    
-    
-    tr_seq_length = np.array(map(lambda x: x.shape[1], trainSamples))
-
-
-
-    for i in  range(trainSamples.shape[0]):
-        cc =  np.mean(trainSamples[i], axis = 1)
-        cc = np.matlib.repmat(cc, 249,1).T
-        
-        
-        m = np.mean(trainSamples[i],axis = 1).T
-        m = np.matlib.repmat(m,trainSamples[i].shape[1],1).T
-        
-      
-        stdv = np.std(trainSamples[i],axis = 1).T
-        stdv = np.matlib.repmat(stdv,trainSamples[i].shape[1],1).T
-
-        trainSamples[i] -= (m)
-        trainSamples[i] = np.divide(trainSamples[i], stdv)
-        # print np.mean(trainSamples[i], axis = 1)
-
-
-
-    trainSamples = np.array((map(lambda x:doPad(x, length), trainSamples)))
-
-    trainSamples = np.dstack(trainSamples)
-
-    trainSamples=np.rollaxis(trainSamples,-1)
-
-    # trainSamples = np.array((map(lambda x:x.T, trainSamples)))
-    trainLabels = np.array((map(lambda x:toOneHot(x, totClass), trainLabels)))
-
-    
-
-    #normalization
-    # trainSamples -= np.array(map(trainSamples, lambda x:np.mean(x, axis = 0),trainSamples))
-
-    
-    tstData = loadmat('./data/tidigits_mfccs_test.mat')
-    tstSamples = tstData['tidigits_mfccs_test'][0][0][5][0]
-    tstLabels  = tstData['tidigits_mfccs_test'][0][0][8][0]
-
-    
-    for i in  range(tstSamples.shape[0]):
-        
-        cc =  np.mean(tstSamples[i], axis = 1)
-        cc = np.matlib.repmat(cc, 249,1).T
-        
-        m = np.mean(tstSamples[i],axis = 1)
-        m = np.mean(tstSamples[i],axis = 1).T
-        
-        m = np.matlib.repmat(m,tstSamples[i].shape[1],1).T
-
-
-        stdv = np.std(tstSamples[i],axis = 1).T
-        stdv = np.matlib.repmat(stdv,tstSamples[i].shape[1],1).T
-        
-        tstSamples[i] -= (m)
-        tstSamples[i] = np.divide(tstSamples[i], stdv)
-
-    print tstSamples[i].shape
-
-    ts_seq_length = np.array(map(lambda x: x.shape[1], tstSamples))
-    print ts_seq_length
-    tstSamples = np.array((map(lambda x:doPad(x, length), tstSamples)))
-    tstSamples = np.array((map(lambda x:x.T, tstSamples)))
-    tstLabels = np.array((map(lambda x:toOneHot(x, totClass), tstLabels)))
-    print "Load Compelete"
-    
-
-    trainData = DataSet(trainSamples,trainLabels,tr_seq_length,batchSize)
-    tstData = DataSet(tstSamples,tstLabels,ts_seq_length,batchSize)
-    
-    return trainData, tstData
-
-
 def BiRNN(x, seq_length ,weights, biases):
 
     # Prepare data shape to match `bidirectional_rnn` function requirements
@@ -390,17 +304,6 @@ def main():
     # pred  = RNN(x, seq, weight, bias, weights2, bias2)
 
     pred  = RNN2(x, seq, weights2, bias2)
-    # pred = BiRNN(x, weight, bias)
-
-    # tv = tf.trainable_variables()
-    # regularization_cost = tf.reduce_sum([ tf.nn.l2_loss(v) for v in tv ])
-
-    
-    
-    # cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
-    
-    # cost = cross_entropy = -tf.reduce_sum(y * tf.log(tf.clip_by_value(pred,1e-10,1.0))) 
-
     cost = cross_entropy = -tf.reduce_sum(y * tf.log(pred))
 
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
@@ -426,27 +329,15 @@ def main():
         step = 1
         # Keep training until reach max iterations
         while step * batch_size < training_iters:
-            # print(offset)
-            # batch_x = tr_features[offset:(offset + batch_size), :, :]
-            # batch_y = tr_labels[offset:(offset + batch_size), :]
-            
+           
             batch_x, batch_y, batch_seq = tr_data.next_batch(batch_size)
-            #print batch_x[0][0]
-            # offset = (step * batch_size) % (tr_labels.shape[0] - batch_size)
-
-            # batch_x, batch_y = mnist.train.next_batch(batch_size)
-            # Reshape data to get 28 seq of 28 elements
             batch_x = np.transpose(batch_x,(0,2,1))
             
             
             # Run optimization op (backprop)
             sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, seq:batch_seq})
             if step % display_step == 0:
-                # Calculate batch accuracy
-                # print batch_x[0]
-                # print batch_y[0]
-                # print sess.run(tf.argmax(y,1),feed_dict = {y:batch_y})
-                # print sess.run(tf.argmax(pred,1),feed_dict = {x:batch_x, seq:batch_seq})
+               
                 acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, seq:batch_seq})
 
                 
@@ -459,113 +350,17 @@ def main():
         print("Optimization Finished!")
         model_path = './models/model.ckpt'
         saver.save(sess, model_path)
-        # Calculate accuracy for 128 mnist test images
+
         test_len = ts_data._num_examples
         test_data = ts_data.features[:test_len]
         # test_data = np.transpose(test_data,(0,2,1))
         test_label = ts_data.labels[:test_len]
         test_seq = ts_data.seq_length[:test_len]
         print test_data.shape
-        # test_data = test_data.T
-
-        # test_len = mnist.test.images.shape[0]
-        # test_data = mnist.test.images[:test_len].reshape((-1, n_steps, n_input))
-        # test_label = mnist.test.labels[:test_len]
-
         print test_data.shape
         #acc = sess.run(acc,feed_dict={x: test_data, y: test_label, seq: test_seq})
         print("Testing Accuracy:", \
             sess.run(accuracy,feed_dict={x: test_data, y: test_label, seq: test_seq}))
     
-
-def main2():
-    tf.reset_default_graph()
-
-    learning_rate = 0.0001
-    # training_iters = 25000
-    training_iters = 400000
-    batch_size = 100
-    display_step = 10
-
-    tr_data, ts_data = loadData(batch_size);
-
-    batch_x, batch_y, batch_seq = tr_data.next_batch(batch_size)
-
-    # Network Parameters
-    n_input = 39
-    n_steps = 249
-    n_hidden2 = 200
-    n_classes = 11
-
-    x = tf.placeholder("float", [None, n_steps, n_input])
-    y = tf.placeholder("float", [None, n_classes])
-    seq = tf.placeholder(tf.int32, [None])
-
-
-    weight = tf.Variable(tf.random_normal([n_hidden, n_hidden]))
-    weights2 = tf.Variable(tf.random_normal([n_hidden, n_classes]))
-    
-    bias = tf.Variable(tf.random_normal([n_hidden]))
-    bias2 = tf.Variable(tf.random_normal([n_classes]))
-
-    pred  = RNN(x, seq, weight, bias, weights2, bias2)
-
-    cost = cross_entropy = -tf.reduce_sum(y * tf.log(pred))
-
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
-    #optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(loss_f)
-    # Evaluate model
-    correct_pred = tf.equal(tf.argmax(pred,1), tf.argmax(y,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-
-    # Initializing the variables
-    init = tf.initialize_all_variables()
-    nepoch = 100
-
-    test_len = ts_data._num_examples/10
-    test_data = ts_data.features[:test_len].reshape((-1, n_steps, n_input))
-    test_label = ts_data.labels[:test_len]
-
-    with tf.Session() as sess:
-        sess.run(init)
-        step = 1
-        # Keep training until reach max iterations
-        for epoch in range(nepoch):
-            print epoch
-            for curP in range(0, tr_data._num_examples, batch_size):
-                batch_x = tr_data.features[curP:curP + batch_size]
-                batch_y = tr_data.labels[curP:curP + batch_size]
-                batch_seq = tr_data.seq_length[curP:curP + batch_size]
-                batch_x = np.transpose(batch_x,(0,2,1))
-                # Run optimization op (backprop)
-                sess.run(optimizer, feed_dict={x: batch_x, y: batch_y, seq:batch_seq}) 
-            #test
-            test_len = batch_size
-            
-            test_data = ts_data.features[:test_len]
-            # test_data = np.transpose(test_data,(0,2,1))
-            test_label = ts_data.labels[:test_len]
-            test_seq = ts_data.seq_length[:test_len]
-
-            acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, seq:batch_seq})
-                    # Calculate batch loss
-            loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y, seq:batch_seq})
-            print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
-                    "{:.6f}".format(loss) + ", Training Accuracy= " + \
-                    "{:.5f}".format(acc))
-
-
-        print("Optimization Finished!")
-
-        test_len = batch_size
-        test_data = ts_data.features[:test_len]
-        # test_data = np.transpose(test_data,(0,2,1))
-        test_label = ts_data.labels[:test_len]
-        test_seq = ts_data.seq_length[:test_len]
-        
-        print test_data.shape
-        cc = sess.run(acc,feed_dict={x: test_data, y: test_label, seq: test_seq})
-        print("Testing Accuracy:", \
-            sess.run(acc,feed_dict={x: test_data, y: test_label, seq: test_seq}))
 if __name__ == '__main__':
     main()
