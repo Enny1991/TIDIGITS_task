@@ -10,9 +10,6 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import rnn
 from tensorflow.python.ops import variable_scope as vs
 
-
-import tflearn
-
 import numpy
 from tensorflow.python.ops import variable_scope as vs
 # Import MNIST data
@@ -21,11 +18,7 @@ np.set_printoptions(threshold=numpy.nan)
 
 
 n_hidden = 120
-'''
-To classify images using a bidirectional recurrent neural network, we consider
-every image row as a sequence of pixels. Because MNIST image shape is 28*28px,
-we will then handle 28 sequences of 28 steps for every sample.
-'''
+
 class DataSet:
     def __init__(self, features, labels, seq_length,batch_size):
         self.features = features
@@ -201,22 +194,11 @@ def RNN2(x, seq_length, weights, bias):
 
 
 def main():
-
-
     learning_rate = 1e-4
-    #0.0001
-    # training_iters = 25000
     training_iters = 400000
     batch_size = 128
     display_step = 10
-
     tr_data, ts_data = loadData(batch_size);
-
-    # print ts_data.features.shape
-  
-
-    # batch_x, batch_y, batch_seq = tr_data.next_batch(batch_size)
-    
 
     # Network Parameters
     n_input = 39
@@ -228,11 +210,9 @@ def main():
     y = tf.placeholder("float", [None, n_classes])
     seq = tf.placeholder(tf.int32, [None])
 
-    weight = tf.Variable(tf.random_normal([n_hidden, n_hidden]))
-    weights2 = tf.Variable(tf.random_normal([n_hidden, n_classes]))
-    bias = tf.Variable(tf.random_normal([n_hidden]))
-    bias2 = tf.Variable(tf.random_normal([n_classes]))
-    pred  = RNN2(x, seq,weights2, bias2)
+    weights = tf.Variable(tf.random_normal([n_hidden, n_classes]))
+    bias = tf.Variable(tf.random_normal([n_classes]))
+    pred  = RNN2(x, seq, weights, bias)
     # pred = tf.nn.softmax(logits)
     # pred  = BiRNN(x, seq, weights2, bias2)
     # pred  = BLSTM(x, seq, weights2, bias2)
@@ -286,9 +266,6 @@ def main():
         # test_data = np.transpose(test_data,(0,2,1))
         test_label = ts_data.labels[:test_len]
         test_seq = ts_data.seq_length[:test_len]
-        # test_seq = np.array([249 for i in range(test_len)])
-        print test_data.shape
-        print test_data.shape
         #acc = sess.run(acc,feed_dict={x: test_data, y: test_label, seq: test_seq})
         print("Testing Accuracy:", \
             sess.run(accuracy,feed_dict={x: test_data, y: test_label, seq: test_seq}))
