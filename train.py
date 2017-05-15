@@ -1,20 +1,16 @@
+import matplotlib.pyplot as plt
+import numpy as np
 
-
+from scipy.io import loadmat
 import tensorflow as tf
 from tensorflow.contrib import rnn
-import numpy as np
-from scipy.io import loadmat
-
 from tensorflow.contrib.rnn.python.ops import core_rnn as contrib_rnn
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import rnn
 from tensorflow.python.ops import variable_scope as vs
-
-import numpy
-from tensorflow.python.ops import variable_scope as vs
 # Import MNIST data
 
-np.set_printoptions(threshold=numpy.nan)
+np.set_printoptions(threshold=np.nan)
 
 
 n_hidden = 120
@@ -58,8 +54,8 @@ class DataSet:
     def next_batch(self, batch_size,shuffle=False):
         start = self._index_in_epoch
         if self._epochs_completed == 0 and start == 0 and shuffle:
-            perm0 = numpy.arange(self._num_examples)
-            numpy.random.shuffle(perm0)
+            perm0 = np.arange(self._num_examples)
+            np.random.shuffle(perm0)
             self._features = self.features[perm0]
             self._labels = self.labels[perm0]
             self._seq_length = self.seq_length[perm0]
@@ -74,8 +70,8 @@ class DataSet:
 
             # Shuffle the data
             if shuffle:
-                perm = numpy.arange(self._num_examples)
-                numpy.random.shuffle(perm)
+                perm = np.arange(self._num_examples)
+                np.random.shuffle(perm)
                 self._features = self.features[perm]
                 self._labels = self.labels[perm]
                 self._seq_length = self.seq_length[perm]
@@ -87,7 +83,7 @@ class DataSet:
             features_new_part = self._features[start:end]
             labels_new_part = self._labels[start:end]
             seq_length_new_part = self._seq_length[start:end]
-            return numpy.concatenate((features_rest_part, features_new_part), axis=0) , numpy.concatenate((labels_rest_part, labels_new_part), axis=0), numpy.concatenate((seq_length_rest_part, seq_length_new_part), axis=0)
+            return np.concatenate((features_rest_part, features_new_part), axis=0) , np.concatenate((labels_rest_part, labels_new_part), axis=0), np.concatenate((seq_length_rest_part, seq_length_new_part), axis=0)
         else:
             self._index_in_epoch += batch_size
             end = self._index_in_epoch
@@ -103,7 +99,6 @@ def toOneHot(num, totClass):
     vec = np.zeros(1 + totClass)
     vec[num] = 1
     return vec
-
 
 def loadData(batchSize):
     length = 249
@@ -170,9 +165,6 @@ def loadData(batchSize):
     
     return trainData, tstData
 
-
-
-
 def RNN2(x, seq_length, weights, bias):
     drop_out_rate = 0.75
     multicell = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.GRUCell(
@@ -194,17 +186,19 @@ def RNN2(x, seq_length, weights, bias):
 
 
 def main():
+    
+
+    # Network Parameters
     learning_rate = 1e-4
     training_iters = 400000
     batch_size = 128
     display_step = 10
-    tr_data, ts_data = loadData(batch_size);
-
-    # Network Parameters
     n_input = 39
     n_steps = 249
     n_hidden2 = 200
     n_classes = 11
+
+    tr_data, ts_data = loadData(batch_size)
 
     x = tf.placeholder("float", [None, n_steps, n_input])
     y = tf.placeholder("float", [None, n_classes])
@@ -231,6 +225,10 @@ def main():
 
     saver = tf.train.Saver()
 
+    pltIter = []
+    pltAcc = []
+    pltLoss = []
+
     print "start"
     with tf.Session() as sess:
         sess.run(init)
@@ -249,15 +247,28 @@ def main():
             if step % display_step == 0:
                
                 acc = sess.run(accuracy, feed_dict={x: batch_x, y: batch_y, seq:batch_seq})
-
-                
-                # Calculate batch loss
                 loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y, seq:batch_seq})
+
+                pltIter.append(step)
+                pltAcc.append(acc)
+                pltLoss.append(loss)
+
                 print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
                 "{:.6f}".format(loss) + ", Training Accuracy= " + \
                 "{:.5f}".format(acc))
             step += 1
         print("Optimization Finished!")
+
+
+        plt.subplot(211)
+        plt.plot(pltIter, pltLoss)
+
+        plt.subplot(212)
+        plt.plot(pltIter, pltAcc)
+        plt.savefig('./figures/Iter vs Loss & acc',format = 'png')
+
+        plt.show()
+
         model_path = './models/model.ckpt'
         saver.save(sess, model_path)
 
