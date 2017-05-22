@@ -15,6 +15,7 @@ np.set_printoptions(threshold=np.nan)
 
 n_hidden = 120
 
+
 class DataSet:
     def __init__(self, features, labels, seq_length,batch_size):
         self.features = features
@@ -33,7 +34,7 @@ class DataSet:
         self._num_examples = labels.shape[0]
 
         
-       
+
     def nextBatchData(self):
         re = []
         for i in range(self.batch_size):
@@ -180,6 +181,16 @@ def RNN2(x, seq_length, weights, bias):
         )
     outputs = tf.transpose(outputs, [1, 0, 2])
     last = tf.gather(outputs, int(outputs.get_shape()[0]) - 1)
+
+    # get last relevant output
+    # BEGIN
+    # batch_size = tf.shape(out)[0]
+    # max_length = tf.shape(out)[1]
+    # out_size = int(out.get_shape()[2])
+    # index = tf.range(0, batch_size) * max_length + (lens - 1)
+    # flat = tf.reshape(outputs, [-1, out_size])
+    # last = tf.gather(flat, index)
+    # END
 
     # last = outputs[-1]
     return tf.nn.softmax(tf.matmul(last, weights) + bias)
